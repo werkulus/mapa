@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OSM + Lasy PAŃSTWOWE - Fundacja Zielone Szkiełko</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; font-family: Arial, sans-serif; }
+        #map { height: 100vh; width: 100%; position: relative; z-index: 1; }
+        
+        /* RAMKA U GÓRY - NIE ZAWija SIĘ */
+        .header {
+            position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+            background: rgba(255,255,255,0.9); padding: 6px 16px; border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 1001;
+            white-space: nowrap; font-size: 14px; font-weight: bold; color: #2E7D32;
+            min-width: fit-content;
+        }
+        
+        /* PANEL NA DOLE */
+        .bottom-panel {
+            position: fixed; bottom: 10px; left: 10px; right: 10px; z-index: 1000;
+            background: rgba(255,255,255,0.8); backdrop-filter: blur(15px);
+            padding: 15px; border-radius: 15px; box-shadow: 0 4px 25px rgba(0,0,0,0.25);
+            max-width: 500px; margin: 0 auto;
+        }
+        
+        .control-group { margin: 12px 0; }
+        .label { 
+            font-weight: bold; font-size: 14px; color: #333; 
+            cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+            padding: 8px; background: rgba(255,255,255,0.5); border-radius: 8px;
+        }
+        .toggle-icon { font-size: 18px; transition: transform 0.3s; }
+        .toggled .toggle-icon { transform: rotate(180deg); }
+        .sliders-container { 
+            max-height: 0; overflow: hidden; transition: max-height 0.4s ease;
+            background: rgba(255,255,255,0.4); border-radius: 8px; margin-top: 5px;
+        }
+        .control-group.toggled .sliders-container { max-height: 200px; padding: 12px; }
+        
+        .slider { 
+            width: 100%; height: 8px; margin: 10px 0;
+            -webkit-appearance: none; background: linear-gradient(90deg, #ddd, #4CAF50);
+            border-radius: 5px; outline: none;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 25px; width: 25px; 
+            background: linear-gradient(45deg, #4CAF50, #45a049); border-radius: 50%; 
+            cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+        }
+        
+        .zoom-control { 
+            display: flex; gap: 12px; justify-content: center; margin-top: 15px; 
+        }
+        .zoom-btn {
+            width: 50px; height: 50px; border: none; border-radius: 12px; 
+            background: linear-gradient(145deg, rgba(76,175,80,0.95), rgba(46,125,50,0.95));
+            color: white; font-size: 22px; font-weight: bold; cursor: pointer; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: all 0.3s;
+        }
+        .zoom-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
+        .zoom-btn:active { transform: translateY(0); }
+    </style>
+</head>
+<body>
+    <!-- RAMKA U GÓRY -->
+    <div class="header">Fundacja Zielone Szkiełko</div>
+    
+    <!-- MAPA -->
+    <div id="map"></div>
+    
+    <!-- PANEL NA DOLE -->
+    <div class="bottom-panel">
+        <div class="control-group toggled" onclick="toggleSliders()">
+            <div class="label">
+                <span>Przezroczystość warstw Lasów Państwowych</span>
+                <span class="toggle-icon">▲</span>
+            </div>
+            <div class="sliders-container">
+                <div>Własność LP: <input id="op1" class="slider" type="range" min="0" max="1" step="0.05" value="0.7"></div>
+                <div>Drzewostany: <input id="op2" class="slider" type="range" min="0" max="1" step="0.05" value="0.6"></div>
+                <div>Siedliska: <input id="op3" class="slider" type="range" min="0" max="1" step="0.05" value="0.5"></div>
+            </div>
+        </div>
+        
+        <div class="zoom-control">
+            <button class="zoom-btn" onclick="map.setZoom(map.getZoom()-1)">−</button>
+            <button class="zoom-btn" onclick="map.setZoom(map.getZoom()+1)">+</button>
+        </div>
+    </div>
+
+    <script>
+        var map = L.map('map').setView([52.23, 21.01], 11);
+        
+        // PODKŁADY
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        var layer1 = L.tileLayer('https://mapserver.bdl.lasy.gov.pl/arcgis/rest/services/WMTS_BDL_kat_wlasnosci/MapServer/tile/{z}/{y}/{x}', { opacity: 0.7 }).addTo(map);
+        var layer2 = L.tileLayer('https://mapserver.bdl.lasy.gov.pl/arcgis/rest/services/WMTS_BDL_mapa_drzewostanow/MapServer/tile/{z}/{y}/{x}', { opacity: 0.6 }).addTo(map);
+        var layer3 = L.tileLayer('https://mapserver.bdl.lasy.gov.pl/arcgis/rest/services/WMTS_BDL_mapa_siedlisk/MapServer/tile/{z}/{y}/{x}', { opacity: 0.5 }).addTo(map);
+
+        // UKRYJ ZOOM LEAFLET (po inicjalizacji mapy)
+        map.zoomControl.remove();
+
+        // SUWAKI
+        document.getElementById('op1').oninput = e => layer1.setOpacity(parseFloat(e.target.value));
+        document.getElementById('op2').oninput = e => layer2.setOpacity(parseFloat(e.target.value));
+        document.getElementById('op3').oninput = e => layer3.setOpacity(parseFloat(e.target.value));
+
+        function toggleSliders() {
+            var group = document.querySelector('.control-group');
+            group.classList.toggle('toggled');
+        }
+    </script>
+</body>
+</html>
